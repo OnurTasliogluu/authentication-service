@@ -8,6 +8,8 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { Role } from './entities/user.entity';
+import { Prisma } from '@prisma/client';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class UserService {
@@ -26,8 +28,19 @@ export class UserService {
       tenantId,
     )) as PrismaService;
 
+    const existingUser = await tenantPrisma.user.findUnique({
+      where: { email: createUserDto.email },
+    });
+
+    if (existingUser) {
+      throw new ConflictException('User with this name already exists');
+    }
+
+    let hashedPassword = await bcrypt.hash(createUserDto.password, 10);
+
     const userData = {
       ...createUserDto,
+      password: hashedPassword,
       tenantId: existingTenant.id,
       role: createUserDto.role || Role.USER,
     };
@@ -42,15 +55,50 @@ export class UserService {
     return tenantPrisma.user.findMany();
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} user`;
+  async findOne(tenantId: string, id: string) {
+    const tenantPrisma = await this.prisma.switchTenantDatabase(tenantId);
+    const user = await tenantPrisma.user.findUnique({
+      where: { id: id },
+    });
+
+    if (!user) {
+      throw new NotFoundException(`User with ID ${id} not found`);
+    }
+    return user;
   }
 
-  update(id: number, updateUserDto: UpdateUserDto) {
-    return `This action updates a #${id} user`;
+  async update(tenantId: string, id: string, updateUserDto: UpdateUserDto) {
+    const tenantPrisma = await this.prisma.switchTenantDatabase(tenantId);
+
+    try {
+      return await tenantPrisma.user.update({
+        where: { id: id },
+        data: updateUserDto,
+      });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError) {
+        if (error.code === 'P2025') {
+          throw new NotFoundException(`User with ID ${id} not found`);
+        }
+      }
+      throw error;
+    }
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} user`;
+  async remove(tenantId: string, id: string) {
+    const tenantPrisma = await this.prisma.switchTenantDatabase(tenantId);
+
+    try {
+      return await tenantPrisma.user.delete({
+        where: { id: id },
+      });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError) {
+        if (error.code === 'P2025') {
+          throw new NotFoundException(`User with ID ${id} not found`);
+        }
+      }
+      throw error;
+    }
   }
 }

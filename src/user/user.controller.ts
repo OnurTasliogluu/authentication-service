@@ -16,7 +16,7 @@ import { AuthGuard } from 'src/middleware/guards/authentication.guard';
 import { RolesGuard } from 'src/middleware/guards/role.guard';
 import { Roles } from 'src/middleware/guards/role.decorator';
 
-@Controller('tenants')
+@Controller('user')
 @UseGuards(RolesGuard)
 @UseGuards(AuthGuard)
 export class UserController {
@@ -36,19 +36,23 @@ export class UserController {
 
   @Get(':id')
   @Roles('ADMIN', 'SUPERADMIN')
-  findOne(@Param('id') id: string) {
-    return this.userService.findOne(+id);
+  findOne(@Request() request, @Param('id') id: string) {
+    return this.userService.findOne(request['user'].tenantId, id);
   }
 
   @Patch(':id')
   @Roles('ADMIN', 'SUPERADMIN')
-  update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
-    return this.userService.update(+id, updateUserDto);
+  update(
+    @Request() request,
+    @Param('id') id: string,
+    @Body() updateUserDto: UpdateUserDto,
+  ) {
+    return this.userService.update(request['user'].tenantId, id, updateUserDto);
   }
 
   @Delete(':id')
   @Roles('ADMIN', 'SUPERADMIN')
-  remove(@Param('id') id: string) {
-    return this.userService.remove(+id);
+  remove(@Request() request, @Param('id') id: string) {
+    return this.userService.remove(request['user'].tenantId, id);
   }
 }
