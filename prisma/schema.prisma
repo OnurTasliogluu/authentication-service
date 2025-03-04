@@ -1,0 +1,65 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+model Tenant {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  name        String   @unique
+  company     String   @unique
+  email       String   @unique
+  isDeleted   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  users       User[]
+  billing     Billing?
+}
+
+model User {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  email       String   @unique
+  password    String
+  tenantId    String   @db.ObjectId
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  role        Role
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Billing {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId    String   @unique @db.ObjectId
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  plan        Plan
+  status      BillingStatus
+  amountDue   Float
+  currency    String
+  cycleStart  DateTime
+  cycleEnd    DateTime
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+enum Role {
+  SUPERADMIN
+  ADMIN
+  USER
+}
+
+enum Plan {
+  TRIAL
+  BASIC
+  PRO
+  ENTERPRISE
+}
+
+enum BillingStatus {
+  ACTIVE
+  PAST_DUE
+  CANCELLED
+  TRIAL
+}

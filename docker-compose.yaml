@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      target: development  # Use the development stage for local development
+    ports:
+      - 3000:3000
+      # debugging port
+      - 9229:9229
+    depends_on:
+      - mongodb
+    volumes:
+      - .:/app  # Mount the local directory to enable live reload
+      - /app/node_modules  # Ensure node_modules is not overwritten
+    networks:
+      app-network:
+        ipv4_address: 10.20.0.2  # Assign a static IP to the app service (optional)
+    command: pnpm start:dev
+
+  mongodb:
+    image: mongo:latest
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      app-network:
+        ipv4_address: 10.20.0.3  # Assign a static IP to the mongodb service
+    healthcheck:
+      test: ["CMD", "mongo", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    command: mongod --replSet rs0
+
+volumes:
+  mongodb_data:
+
+networks:
+  app-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.20.0.0/24  # Define a subnet for the network
+          gateway: 10.20.0.1
