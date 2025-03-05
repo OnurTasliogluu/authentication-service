@@ -1,58 +1,53 @@
-import {
-  Controller,
-  Get,
-  Post,
-  Body,
-  Patch,
-  Param,
-  Delete,
-  Request,
-  UseGuards,
-} from '@nestjs/common';
+import { Controller, Request, UseGuards } from '@nestjs/common';
 import { UserService } from './user.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { AuthGuard } from 'src/middleware/guards/authentication.guard';
 import { RolesGuard } from 'src/middleware/guards/role.guard';
 import { Roles } from 'src/middleware/guards/role.decorator';
+import { MessagePattern, Payload } from '@nestjs/microservices';
 
-@Controller('user')
+@Controller()
 @UseGuards(RolesGuard)
 @UseGuards(AuthGuard)
 export class UserController {
   constructor(private readonly userService: UserService) {}
 
-  @Post()
+  @MessagePattern({ cmd: 'createUser' })
   @Roles('ADMIN', 'SUPERADMIN')
-  create(@Request() request, @Body() createUserDto: CreateUserDto) {
-    return this.userService.create(request['user'].tenantId, createUserDto);
+  create(@Payload() payload) {
+    const createUserDto: CreateUserDto = payload['data'];
+    return this.userService.create(payload['user'].tenantId, createUserDto);
   }
 
-  @Get()
+  @MessagePattern({ cmd: 'findAllUsers' })
   @Roles('ADMIN', 'SUPERADMIN')
-  findAll(@Request() request) {
-    return this.userService.findAll(request['user'].tenantId);
+  findAll(@Payload() payload) {
+    return this.userService.findAll(payload['user'].tenantId);
   }
 
-  @Get(':id')
+  @MessagePattern({ cmd: 'findOneUser' })
   @Roles('ADMIN', 'SUPERADMIN')
-  findOne(@Request() request, @Param('id') id: string) {
-    return this.userService.findOne(request['user'].tenantId, id);
+  findOne(@Payload() payload) {
+    return this.userService.findOne(
+      payload['user'].tenantId,
+      payload['data'].id,
+    );
   }
 
-  @Patch(':id')
+  @MessagePattern({ cmd: 'updateUser' })
   @Roles('ADMIN', 'SUPERADMIN')
   update(
     @Request() request,
-    @Param('id') id: string,
-    @Body() updateUserDto: UpdateUserDto,
+    @Payload() data: { id: string; updateUserDto: UpdateUserDto },
   ) {
+    const { id, updateUserDto } = data;
     return this.userService.update(request['user'].tenantId, id, updateUserDto);
   }
 
-  @Delete(':id')
+  @MessagePattern({ cmd: 'removeUser' })
   @Roles('ADMIN', 'SUPERADMIN')
-  remove(@Request() request, @Param('id') id: string) {
+  remove(@Request() request, @Payload() id: string) {
     return this.userService.remove(request['user'].tenantId, id);
   }
 }
