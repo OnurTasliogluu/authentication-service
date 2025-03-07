@@ -1,7 +1,6 @@
 import {
   Injectable,
   NotFoundException,
-  BadRequestException,
   ConflictException,
 } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -38,14 +37,14 @@ export class UserService {
 
     let hashedPassword = await bcrypt.hash(createUserDto.password, 10);
 
-    const userData = {
-      ...createUserDto,
-      password: hashedPassword,
-      tenantId: existingTenant.id,
-      role: createUserDto.role || Role.USER,
-    };
-
-    return tenantPrisma.user.create({ data: userData });
+    return tenantPrisma.user.create({
+      data: {
+        ...createUserDto,
+        password: hashedPassword as string,
+        tenantId: existingTenant.id,
+        role: createUserDto.role || Role.USER,
+      },
+    });
   }
 
   async findAll(tenantId: string) {

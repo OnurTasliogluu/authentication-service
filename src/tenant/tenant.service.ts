@@ -2,6 +2,7 @@ import {
   Injectable,
   ConflictException,
   NotFoundException,
+  InternalServerErrorException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateTenantDto } from './dto/create-tenant.dto';
@@ -64,68 +65,94 @@ export class TenantService {
       if (error.code === 'P2002') {
         throw new ConflictException('Tenant with this name, company, or email already exists');
       }
-      throw error;
+      throw new InternalServerErrorException('An error occurred while creating the tenant');
     }
   }
 
   async findAll() {
-    return this.prisma.tenant.findMany({
-      where: { isDeleted: false },
-      include: {
-        users: true,
-        billing: true,
-      },
-    });
+    try {
+      return await this.prisma.tenant.findMany({
+        where: { isDeleted: false },
+        include: {
+          users: true,
+          billing: true,
+        },
+      });
+    } catch (error) {
+      throw new InternalServerErrorException('An error occurred while fetching tenants');
+    }
   }
 
   async findOne(id: string) {
-    const tenant = await this.prisma.tenant.findUnique({
-      where: { id },
-      include: {
-        billing: true,
-      },
-    });
+    try {
+      const tenant = await this.prisma.tenant.findUnique({
+        where: { id },
+        include: {
+          billing: true,
+        },
+      });
 
-    if (!tenant || tenant.isDeleted) {
-      throw new NotFoundException('Tenant not found');
+      if (!tenant || tenant.isDeleted) {
+        throw new NotFoundException('Tenant not found');
+      }
+
+      return tenant;
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      throw new InternalServerErrorException('An error occurred while fetching the tenant');
     }
-
-    return tenant;
   }
 
   async findByEmail(email: string) {
-    const tenant = await this.prisma.tenant.findUnique({
-      where: { email },
-      include: {
-        users: true,
-        billing: true,
-      },
-    });
+    try {
+      const tenant = await this.prisma.tenant.findUnique({
+        where: { email },
+        include: {
+          users: true,
+          billing: true,
+        },
+      });
 
-    if (!tenant || tenant.isDeleted) {
-      throw new NotFoundException('Tenant not found');
+      if (!tenant || tenant.isDeleted) {
+        throw new NotFoundException('Tenant not found');
+      }
+
+      return tenant;
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      throw new InternalServerErrorException('An error occurred while fetching the tenant by email');
     }
-
-    return tenant;
   }
 
   async remove(id: string) {
-    return this.prisma.tenant.update({
-      where: { id },
-      data: {
-        isDeleted: true,
-        updatedAt: new Date(),
-      },
-    });
+    try {
+      return await this.prisma.tenant.update({
+        where: { id },
+        data: {
+          isDeleted: true,
+          updatedAt: new Date(),
+        },
+      });
+    } catch (error) {
+      throw new InternalServerErrorException('An error occurred while deleting the tenant');
+    }
   }
 
   async restore(id: string) {
-    return this.prisma.tenant.update({
-      where: { id },
-      data: {
-        isDeleted: false,
-        updatedAt: new Date(),
-      },
-    });
+    try {
+      return await this.prisma.tenant.update({
+        where: { id },
+        data: {
+          isDeleted: false,
+          updatedAt: new Date(),
+        },
+      });
+    } catch (error) {
+      throw new InternalServerErrorException('An error occurred while restoring the tenant');
+    }
   }
 }

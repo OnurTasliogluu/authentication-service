@@ -22,7 +22,7 @@ export class CommonService {
       });
       // Return immediately if found
       if (user) {
-        return { ...user, tenantId: tenant.id };
+        return user;
       }
     }
 
